@@ -1,0 +1,12 @@
+.bash_history
+.coverage
+.DS_Store
+.idea/
+.vscode
+*.iml
+*.log
+*.pyc
+.pytest_cache
+.env
+tmp/*
+!tmp/.gitkeep

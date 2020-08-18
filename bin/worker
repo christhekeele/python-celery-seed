@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs celery workers.
+# Assumes bin/install has been run.
+
+celery_app="app.task.registry"
+
+# Echo commands
+set -x
+
+newrelic-admin run-program celery worker -A $celery_app $*

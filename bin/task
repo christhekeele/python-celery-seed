@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Runs specific tasks.
+# Assumes bin/setup has been run.
+
+print_help () {
+  echo "Runs specific tasks."
+  echo "Usage: $0 <mode> <task> [<args...>]"
+  echo "Modes:"
+  echo " $0 local <task>:   runs tasks entirely on current machine"
+  echo " $0 remote <task>:  queues tasks to execute on deployed infra via RabbitMQ"
+  echo " $0 help:           prints this help (default)"
+  echo "Tasks:"
+  echo " $0 <mode> units:      runs DM on all units"
+  echo " $0 <mode> community:  runs DM for a given community"
+}
+
+celery_app="app.task.registry"
+
+mode="${1:-help}"
+
+if [[ "$mode" == "help" || "$mode" == "--help" || "$mode" == "-h" ]]; then
+  print_help
+  exit 0
+elif [[ "$mode" == "local" ]]; then
+  celery_local="true"
+elif [[ "$mode" == "remote" ]]; then
+  celery_local="false"
+else
+  echo "Unrecognized mode <$1>."
+  print_help
+  exit 1
+fi
+
+name="${2}"
+
+if [[ "$name" == "units" ]]; then
+  celery_task_module="app.tasks.some"
+  celery_task_name="task"
+else
+  echo "Unrecognized task <$2>."
+  print_help
+  exit 1
+fi
+
+args=${@:3}
+
+# Echo commands
+set -x
+
+# Inexplicably, `celery call` ignores always-eager settings, so we implement task calling ourselves
+CELERY_TASK_ALWAYS_EAGER=$celery_local python - <<-"EOF" $celery_task_module $celery_task_name $args
+import sys
+from importlib import import_module
+
+if __name__ == "__main__":
+    module_name = sys.argv[1]
+    function_name = sys.argv[2]
+    args = sys.argv[3:]
+
+    module = import_module(module_name)
+    function = module.__getattribute__(function_name)
+    if callable(function) and 'apply_async' in dir(function):
+        function.apply_async(args=args)
+    else:
+        raise "Celery task not provided."
+EOF
