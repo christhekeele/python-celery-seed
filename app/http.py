@@ -20,7 +20,7 @@ class TimeoutHTTPAdapter(HTTPAdapter):
         return super().send(request, **kwargs)
 
 
-requests = requests.Session()
+caller = requests.Session()
 adapter = TimeoutHTTPAdapter(
     max_retries=Retry(
         total=3,
@@ -29,5 +29,5 @@ adapter = TimeoutHTTPAdapter(
         method_whitelist=["HEAD", "GET", "OPTIONS", "POST"],
     )
 )
-requests.mount("https://", adapter)
-requests.mount("http://", adapter)
+caller.mount("https://", adapter)
+caller.mount("http://", adapter)

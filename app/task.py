@@ -1,7 +1,9 @@
 import celery
+from celery.signals import after_setup_logger, after_setup_task_logger
 from celery.schedules import crontab
 
 import app.config
+import app.logger
 
 
 ####
@@ -45,9 +47,7 @@ def schedule(spec):
 # TASK REGISTRY
 ##
 
-registry = celery.Celery(
-    "discrepancy-monitoring", broker=app.config.CELERY_BROKER, include=["app.tasks.units", "app.tasks.sync"]
-)
+registry = celery.Celery("celery-seed", broker=app.config.CELERY_BROKER, include=["app.tasks.recurring"])
 
 ####
 # General
@@ -70,7 +70,10 @@ registry.conf.task_default_queue = "default"
 ##
 
 registry.conf.beat_schedule = {
-    # "some-task": {"task": "app.tasks.some.task", "schedule": schedule(app.config.SOME_TASK_CRON)}
+    "recurring-task": {
+        "task": "app.tasks.recurring.ring_in_the_new_year",
+        "schedule": schedule(app.config.NEW_YEAR_CRON),
+    }
 }
 
 ####
@@ -83,6 +86,20 @@ registry.conf.beat_schedule = {
 registry.conf.task_queue_max_priority = MAX_PRIORITY
 # Default tasks to normal priority
 registry.conf.task_default_priority = NORMAL_PRIORITY
+
+
+@after_setup_logger.connect
+def overrwrite_worker_handler(logger, *args, **kwargs):
+    logger.setLevel(app.logger.level)
+    for handler in logger.handlers:
+        handler.setFormatter(app.logger.formatter)
+
+
+@after_setup_task_logger.connect
+def overrwrite_task_handler(logger, *args, **kwargs):
+    logger.setLevel(app.logger.level)
+    for handler in logger.handlers:
+        handler.setFormatter(app.logger.formatter)
 
 
 ####

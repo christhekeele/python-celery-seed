@@ -33,9 +33,9 @@ fi
 
 name="${2}"
 
-if [[ "$name" == "units" ]]; then
-  celery_task_module="app.tasks.some"
-  celery_task_name="task"
+if [[ "$name" == "new_year" ]]; then
+  celery_task_module="app.tasks.recurring"
+  celery_task_name="ring_in_the_new_year"
 else
   echo "Unrecognized task <$2>."
   print_help

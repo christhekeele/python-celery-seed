@@ -4,8 +4,9 @@ default_language_version:
 repos:
   ####
   # Maintain command order parity with:
-  #  bin/format
-  #  bin/lint
+  #  bin/src/format
+  #  bin/src/lint
+  #  bin/src/typecheck
   # respectively.
   #
   # Running auto-formatting pre-commit hooks
@@ -14,7 +15,7 @@ repos:
   #  separately.
   #
   # For instance, the CI build in .circleci/config.yml
-  #  will run just bin/lint as a sanity check,
+  #  will run just bin/src/lint as a sanity check,
   #  without running auto-formatters first:
   #  since we expect auto-formatting pre-commits
   #  to prevent linting from failing, but want
@@ -24,7 +25,7 @@ repos:
   ##
 
   ####
-  # BIN/FORMAT
+  # BIN/SRC/FORMAT
   ##
 
   # Format whitespace:
@@ -66,7 +67,7 @@ repos:
       - id: black
 
   ####
-  # BIN/LINT
+  # BIN/SRC/LINT
   ##
 
   # Lint for high-level red flags
@@ -93,3 +94,18 @@ repos:
       - id: check-ast         # Simply check whether files parse as valid python.
       - id: debug-statements  # Check for debugger imports and py37+ breakpoint() calls in python source.
       - id: flake8            # Run flake8 on your python files.
+
+  ####
+  # BIN/SRC/TYPECHECK
+  ##
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: d6e31ae # pre-commit/mirrors-mypy v0.782
+    hooks:
+      - id: mypy
+        name: Typecheck source files
+        additional_dependencies:
+          - 'sqlalchemy-stubs'
+
+        args:
+          - --warn-unused-configs # Takes effect when above is removed

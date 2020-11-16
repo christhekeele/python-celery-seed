@@ -3,14 +3,16 @@ from contextlib import contextmanager
 import logging
 
 import app.config
-import app.app_logging
+import app.logger
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger("sqlalchemy.engine")
-logger.setLevel(app.app_logging.level)
+logger.setLevel(app.logger.level)
+for handler in logger.handlers:
+    handler.setFormatter(app.logger.formatter)
 
 
 def open_session():

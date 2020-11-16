@@ -6,4 +6,4 @@ EVENT_NAMESPACE = app.config.NEW_RELIC_EVENT_NAMESPACE
 
 
 def report(event, data):
-    newrelic.agent.record_custom_event(EVENT_NAMESPACE, dict(**data, event=event))
+    newrelic.agent.record_custom_event(EVENT_NAMESPACE, dict(event=event, **data))

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Runs celery cron scheduler.
+# Assumes bin/install has been run.
+
+celery_app="app.task.registry"
+celerybeat_schedule="./tmp/celerybeat-schedule"
+celerybeat_pidfile="./tmp/celerybeat.pid"
+
+# Echo commands
+set -x
+
+newrelic-admin run-program celery beat \
+    -A $celery_app \
+    -s $celerybeat_schedule \
+    --pidfile $celerybeat_pidfile \
+    $*

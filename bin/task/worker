@@ -7,4 +7,6 @@ celery_app="app.task.registry"
 # Echo commands
 set -x
 
-newrelic-admin run-program celery worker -A $celery_app $*
+newrelic-admin run-program celery worker \
+    -A $celery_app \
+    $*
