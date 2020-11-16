@@ -46,7 +46,9 @@ with connectable.connect() as connection:
 
     try:
         with context.begin_transaction():
-            context.execute("SET session statement_timeout TO {};".format(5000))  # in ms
+            context.execute(
+                "SET session statement_timeout TO {};".format(app.config.DATABASE_MIGRATION_TIMEOUT)
+            )  # in ms
             context.run_migrations()
     finally:
         connection.close()

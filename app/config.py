@@ -11,6 +11,11 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 
 # Primary database for this app
 DATABASE_URL = os.environ["DATABASE_URL"]
+# Migration timeout in milliseconds
+DATABASE_MIGRATION_TIMEOUT = int(os.environ.get("DATABASE_MIGRATION_TIMEOUT", "5000"))
+
+# New Relic Insights event namespace
+NEW_RELIC_EVENT_NAMESPACE = os.environ["NEW_RELIC_EVENT_NAMESPACE"]
 
 ####
 # Tasks

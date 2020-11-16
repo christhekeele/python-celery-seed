@@ -1,6 +1,8 @@
 import newrelic.agent
 
-EVENT_NAMESPACE = "DiscrepancyMonitoring"
+import app.config
+
+EVENT_NAMESPACE = app.config.NEW_RELIC_EVENT_NAMESPACE
 
 
 def report(event, data):
