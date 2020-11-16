@@ -2,13 +2,12 @@
 .coverage
 .DS_Store
 .idea/
-!.vscode
-.vscode/*
-!.vscode/settings.json
+.mypy_cache
 *.iml
 *.log
 *.pyc
 .pytest_cache
+.env
 .env.*
 !.env.template
 !.env.ci

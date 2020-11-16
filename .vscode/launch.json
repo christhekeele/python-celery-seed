@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "name": "Python: Attach Debugger",
+      "request": "attach",
+      "type": "python"
+    },
+    {
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "name": "Python: Current File",
+      "program": "${file}",
+      "request": "launch",
+      "type": "python"
+    }
+  ],
+  "version": "0.2.0"
+}
