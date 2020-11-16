@@ -2,6 +2,7 @@
 .coverage
 .DS_Store
 .idea/
+!.vscode
 .vscode/*
 !.vscode/settings.json
 *.iml
@@ -9,5 +10,6 @@
 *.pyc
 .pytest_cache
 .env
+!tmp
 tmp/*
 !tmp/.gitkeep
