@@ -1,9 +1,8 @@
-import newrelic.agent
-
-import app.config
-
-EVENT_NAMESPACE = app.config.NEW_RELIC_EVENT_NAMESPACE
+from config import TELEMETRY_ENABLED
 
 
-def report(event, data):
-    newrelic.agent.record_custom_event(EVENT_NAMESPACE, dict(event=event, **data))
+def notice_event(event_type, **event):
+    event["type"] = event_type
+
+    if TELEMETRY_ENABLED:
+        pass  # Not using any telemetry services in app yet

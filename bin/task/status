@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Shows celery task status.
+# Assumes bin/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+celery_app="background.worker.registry"
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+LOG_LEVEL=CRITICAL celery events \
+  -A "$celery_app" "$@"

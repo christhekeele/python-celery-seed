@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Runs all code quality checks.
+# Assumes bin/dev/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+print_help() {
+  cat <<HELP
+Runs all code quality checks.
+  $0 changed:  checks only changed staged files (default)
+  $0 all:      checks all files
+  $0 <hook>:   runs a specific hook from .pre-commit-config.yaml
+  $0 help:     prints this help
+HELP
+}
+
+cmd="${1:-changed}"
+
+declare -a args
+
+if [[ "$cmd" == "help" || "$cmd" == "--help" || "$cmd" == "-h" ]]; then
+  print_help
+  exit 0
+elif [[ "$cmd" == "changed" ]]; then
+  args=("changed")
+elif [[ "$cmd" == "all" ]]; then
+  args=("all")
+else
+  subcmd="${2:-changed}"
+  if [[ "$subcmd" == "all" ]]; then
+    args=("--all-files")
+  elif [[ "$subcmd" == "changed" ]]; then
+    args=()
+  else
+    echo "Unrecognized check hook subcommand <$subcmd>."
+    print_help
+    exit 1
+  fi
+  set -x # Echo commands
+  pipenv run pre-commit run -v ${args[@]+"${args[@]}"} "${@:3}" "$cmd"
+  exit $?
+fi
+
+# Collect results
+declare -a results
+
+# Run formatter
+pipenv run format "${@:2}" "${args[@]}"
+results+=($?)
+
+# Run linter
+pipenv run lint "${@:2}" "${args[@]}"
+results+=($?)
+
+# Run typechecks
+pipenv run typecheck "${@:2}" "${args[@]}"
+results+=($?)
+
+# Return success/failure
+for result in ${results[@]+"${results[@]}"}; do
+  if [[ result -ne 0 ]]; then
+    exit "$result"
+  fi
+done
+exit 0

@@ -1,0 +1,181 @@
+name: Test Suite
+
+on:
+  - push
+
+jobs:
+  code-quality:
+    name: Code Quality Suite
+    runs-on: ubuntu-latest
+
+    outputs:
+      branch: ${{ steps.branch.outputs.name }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Determine branch name
+        if: github.event_name != 'pull_request'
+        id: branch
+        run: echo "::set-output name=name::$(echo ${GITHUB_REF#refs/heads/})"
+
+      - name: Load CI environment variables
+        run: |
+          cat $GITHUB_WORKSPACE/${{ env.APP_DIR }}/.env.ci | egrep '^([a-zA-Z0-9_]+)=' | while read line; do
+            echo Setting $(echo "$line" | egrep -o '^([a-zA-Z0-9_]+)')...
+            echo "$line" >> $GITHUB_ENV
+          done
+
+      - name: Install code check system dependencies
+        run: sudo snap install act shfmt
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Setup tool runner
+        run: ./bin/setup
+
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        id: pipenv-cache
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles(format('{0}/{1}/{2}', github.workspace, env.APP_DIR, 'Pipfile.lock')) }}
+          restore-keys: |
+            ${{ runner.os }}-pipenv-
+            ${{ runner.os }}-
+
+      - name: Install testing dependencies
+        if: steps.pipenv-cache.outputs.cache-hit != 'true'
+        run: pipenv run dev_install
+
+      - name: Cache Check Runners
+        uses: actions/cache@v2
+        id: precommit-cache
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-precommit-${{ hashFiles(format('{0}/{1}/{2}', github.workspace, env.APP_DIR, '.pre-commit-config.yaml')) }}
+          restore-keys: |
+            ${{ runner.os }}-precommit-
+            ${{ runner.os }}-
+
+      - name: Run linter checks
+        run: pipenv run lint all
+
+      - name: Run type checks
+        run: pipenv run typecheck all
+
+  unit-test:
+    name: Unit Test Suite
+    runs-on: ubuntu-latest
+
+    outputs:
+      branch: ${{ steps.branch.outputs.name }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Determine branch name
+        if: github.event_name != 'pull_request'
+        id: branch
+        run: echo "::set-output name=name::$(echo ${GITHUB_REF#refs/heads/})"
+
+      - name: Load CI environment variables
+        run: |
+          cat $GITHUB_WORKSPACE/${{ env.APP_DIR }}/.env.ci | egrep '^([a-zA-Z0-9_]+)=' | while read line; do
+            echo Setting $(echo "$line" | egrep -o '^([a-zA-Z0-9_]+)')...
+            echo "$line" >> $GITHUB_ENV
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Setup tool runner
+        run: ./bin/setup
+
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        id: pipenv-cache
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles(format('{0}/{1}/{2}', github.workspace, env.APP_DIR, 'Pipfile.lock')) }}
+          restore-keys: |
+            ${{ runner.os }}-pipenv-
+            ${{ runner.os }}-
+
+      - name: Install testing dependencies
+        if: steps.pipenv-cache.outputs.cache-hit != 'true'
+        run: pipenv run dev_install
+
+      - name: Run unit tests
+        run: pipenv run tests unit
+
+  integration-test:
+    name: Integration Test Suite
+    runs-on: ubuntu-latest
+
+    outputs:
+      branch: ${{ steps.branch.outputs.name }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Determine branch name
+        if: github.event_name != 'pull_request'
+        id: branch
+        run: echo "::set-output name=name::$(echo ${GITHUB_REF#refs/heads/})"
+
+      - name: Load CI environment variables
+        run: |
+          cat $GITHUB_WORKSPACE/${{ env.APP_DIR }}/.env.ci | egrep '^([a-zA-Z0-9_]+)=' | while read line; do
+            echo Setting $(echo "$line" | egrep -o '^([a-zA-Z0-9_]+)')...
+            echo "$line" >> $GITHUB_ENV
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Validate Docker compose config
+        run: docker-compose --project-name $APP_NAME --profile essential config --quiet
+
+      - name: Pull Docker images
+        run: docker-compose --project-name $APP_NAME --profile essential pull
+
+      - name: Cache Docker images
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
+
+      - name: Build and Run Application
+        run: docker-compose --project-name $APP_NAME --profile essential --appup --build --quiet-pull --detach
+
+      - name: Setup tool runner
+        run: ./bin/setup
+
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        id: pipenv-cache
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles(format('{0}/{1}/{2}', github.workspace, env.APP_DIR, 'Pipfile.lock')) }}
+          restore-keys: |
+            ${{ runner.os }}-pipenv-
+            ${{ runner.os }}-
+
+      - name: Install testing dependencies
+        if: steps.pipenv-cache.outputs.cache-hit != 'true'
+        run: pipenv run dev_install
+
+      - name: Ensure API is available
+        run: pipenv run tests api-healthcheck
+
+      - name: Ensure background tasks are available
+        run: pipenv run tests background-healthcheck
+
+      - name: Run integration tests
+        run: pipenv run tests integration

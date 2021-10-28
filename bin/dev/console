@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Runs python REPL.
-# Assumes bin/setup has been run.
+# Assumes bin/dev/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+# Ensure failures propegate
+set -e
 
 # Echo commands
 set -x
 
-bpython --interactive
+bpython --interactive "$@"

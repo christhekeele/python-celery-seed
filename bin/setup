@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Installs additional project tooling.
+# Assumes tools listed in .tool-versions are installed
+# (always true if building with docker)
+
+# Fail on invalid variable references
+set -u
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+# Install package manager
+pip install --upgrade pip
+pip install --no-cache-dir pipenv

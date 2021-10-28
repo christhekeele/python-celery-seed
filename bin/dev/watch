@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Watches for python file changes and restarts provided command.
+# Assumes tools listed in .tool-versions are installed
+# (always true if building with docker)
+# Assumes bin/dev/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+watchmedo auto-restart \
+  --directory ./app \
+  --pattern='*.py' \
+  --recursive \
+  -- "$@"

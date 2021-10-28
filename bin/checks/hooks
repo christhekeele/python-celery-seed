@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Prepares a local dev environment.
+# Assumes tools listed in .tool-versions are installed
+# (always true if building with docker)
+# Assumes bin/dev/install has been run.
+
+print_help() {
+  cat <<HELP
+Formats source files.
+  $0 install:        installs pre-commit git hooks
+  $0 files:          displays files affected by hooks
+  $0 files changed:  only changed staged files (default)
+  $0 files all:      all files affected by hooks
+  $0 help:           prints this help
+HELP
+}
+
+cmd="${1:-changed}"
+
+if [[ "$cmd" == "help" || "$cmd" == "--help" || "$cmd" == "-h" ]]; then
+  print_help
+  exit 0
+elif [[ "$cmd" == "install" ]]; then
+  set -x # Echo commands
+  pre-commit install --install-hooks --overwrite "${@:2}"
+elif [[ "$cmd" == "files" ]]; then
+  subcmd="${2:-changed}"
+  declare -a args
+  if [[ "$subcmd" == "all" ]]; then
+    args=("--all-files")
+  elif [[ "$cmd" == "changed" ]]; then
+    args=()
+  fi
+  set -x # Echo commands
+  pre-commit run identity ${args[@]+"${args[@]}"} "${@:3}"
+else
+  echo "Unrecognized format cmd subcommand <$cmd>."
+  print_help
+  exit 1
+fi

@@ -10,10 +10,10 @@
 
 ####
 # PYTHON VERSION:
-#   We require the latest 3.7 version of python.
+#   We require the latest version of python 3.9.
 ##
 [requires]
-  python_version = "3.7"
+  python_version = "3.9"
 
 ####
 # COMMAND ALIASES:
@@ -22,22 +22,36 @@
 ##
 [scripts]
   # Project preparation
-  setup   = "bin/dev/install"
+  setup   = "bin/setup"
   install = "bin/install"
-  # Quality control
-  format    = "bin/src/format"
-  lint      = "bin/src/lint"
-  typecheck = "bin/src/typecheck"
+  # Code quality control
+  check     = "bin/check"
+  format    = "bin/checks/format"
+  hooks     = "bin/checks/hooks"
+  lint      = "bin/checks/lint"
+  typecheck = "bin/checks/types"
   # Dev tooling
-  console  = "bin/dev/console"
-  debugger = "bin/dev/debug"
-  # Project administration
-  migrate = "bin/db/migrate"
+  shell       = "bin/dev/shell"
+  docker      = "bin/dev/docker"
+  console     = "bin/dev/console"
+  dev_install = "bin/dev/install"
+  watch       = "bin/dev/watch"
+  # Test tooling
+  tests         = "bin/tests"
+  test_coverage = "bin/test/coverage"
+  # DB tooling
+  db_create  = "bin/db/create"
+  db_migrate = "bin/db/migrate"
   # Application entrypoints
-  worker    = "bin/task/worker"
+  api       = "bin/api/server"
   scheduler = "bin/task/scheduler"
-  # Task runners
-  task = "bin/task/run"
+  worker    = "bin/task/worker"
+  # API tooling
+  api_call    = "bin/api/call"
+  api_routes  = "bin/api/routes"
+  # Task tooling
+  task        = "bin/task/run"
+  task_status = "bin/task/status"
 
 ####
 # APPLICATION REQUIREMENTS:
@@ -45,12 +59,31 @@
 #   https://www.python.org/dev/peps/pep-0440/#compatible-release
 ##
 [packages]
-  alembic     = "~=1.4.2"   # DB Migrator
-  newrelic    = "~=5.4.0"   # Monitoring
-  sqlalchemy  = "~=1.3.16"  # DB ORM
-  urllib3     = "~=1.25.9"  # HTTP primitives
-  structlog   = "~=20.1.0"  # Structured logging
-  celery      = "~=4.4.6"   # Task framework
+
+  # DATA
+  pydantic = "~=1.8.2" # Type-aware data objects
+  lxml     = "~=4.6.3" # Efficient xml parser
+
+  # DATABASE
+  alembic    = "~=1.4.3"   # SQL DB Migrator
+  sqlalchemy = "~=1.3.24"  # SQL DB ORM
+  redis      = "~=3.5.3"   # In-memory DB client
+
+  # NETWORK
+  urllib3  = "~=1.26.7"  # HTTP primitives
+  requests = "~=2.25.1"   # HTTP calling library
+
+  # TELEMETRY
+  JSON-log-formatter = "~=0.3.1"  # Structured logger
+
+  # TASKS
+  celery = { version = "~=4.4.7", extras = ["redis"] }
+  # flower = "~=1.0.0"
+
+  # API
+  fastapi = "~=0.63.0"  # API Framework
+  # ASGI server
+  uvicorn = { version = "~=0.13.4", extras = ["standard"] }
 
 ####
 #  DEVELOPMENT REQUIREMENTS:
@@ -58,23 +91,32 @@
 #   https://www.python.org/dev/peps/pep-0440/#compatible-release
 ##
 [dev-packages]
-  # Dev tools
-  black      = "~=19.10b0"  # Formatter
-  bpython    = "~=0.18"     # REPL
-  colorama   = "~=0.4"      # Pretty colors for local logging
-  coverage   = "~=5.0"      # Coverage tool
-  debugpy    = "~=1.1"      # Debug server protocol client
-  flake8     = "~=3.7"      # Linter
-  pre-commit = "~=1.20"     # Git hook installer
-  pylint     = "~=2.4"      # Linter runner
-  pytest     = "~=5.3"      # Test runner
-  pytest-cov = "~=2.8"      # Test runner coverage integration
+  # DEVTOOLS
+  black      = "~=21.9b0"   # Formatter
+  bpython    = "~=0.21"     # REPL
+  pre-commit = "~=2.15"     # Checker runner
+  # Code change process restarter
+  watchdog   = { version = "~=2.1", extras = ["watchmedo"] }
 
-  # Typestubs
-  sqlalchemy-stubs = "~=0.3"  # Stubs for SQLAlchemy
+  # TYPES
+  mypy             = "~=0.910"  # Type checker
+  sqlalchemy-stubs = "~=0.4"    # Type stubs for SQLAlchemy
+
+  # TESTING
+  # Coverage tool
+  coverage   = { version = "~=6.0", extras = ["toml"] }
+  flake8     = "~=3.9"      # Style linter
+  pylint     = "~=2.11"     # Linter runner
+  pytest     = "~=5.4"      # Test runner
+  pytest-cov = ">=2.11"     # Test runner coverage integration
+
+  # SCRIPTING
+  tabulate = "~=0.8" # Pretty print lists of lists
 
 ####
 # PIPENV CONFIG:
 ##
+pipenv = "*"
+
 [pipenv]
   allow_prereleases = true  # We need this to install the `black` formatter at all

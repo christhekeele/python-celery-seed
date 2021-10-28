@@ -6,15 +6,17 @@ from sqlalchemy import pool
 
 from alembic import context
 
-import app.config
+from config import POSTGRESQL_URL, APP_NAME, APP_MODE
+
+database_uri = f"{POSTGRESQL_URL}{APP_NAME}-{APP_MODE}"
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-config = context.config
+alembic = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+fileConfig(alembic.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -27,18 +29,16 @@ target_metadata = None
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-db_uri = app.config.DATABASE_URL
-
-db_confirmation = input("Connecting to {uri}... continue [Y/n]? ".format(uri=db_uri)) or "Y"
+db_confirmation = input("Connecting to {uri}... continue [Y/n]? ".format(uri=database_uri)) or "Y"
 
 if db_confirmation not in ("Y", "y"):
     print("Goodbye!")
     sys.exit()
 
-config.set_main_option("sqlalchemy.url", db_uri)
+alembic.set_main_option("sqlalchemy.url", database_uri)
 
 connectable = engine_from_config(
-    config.get_section(config.config_ini_section), prefix="sqlalchemy.", poolclass=pool.NullPool,
+    alembic.get_section(alembic.config_ini_section), prefix="sqlalchemy.", poolclass=pool.NullPool,
 )
 
 with connectable.connect() as connection:
@@ -46,9 +46,7 @@ with connectable.connect() as connection:
 
     try:
         with context.begin_transaction():
-            context.execute(
-                "SET session statement_timeout TO {};".format(app.config.DATABASE_MIGRATION_TIMEOUT)
-            )  # in ms
+            context.execute("SET session statement_timeout TO {};".format(5000))  # in ms
             context.run_migrations()
     finally:
         connection.close()

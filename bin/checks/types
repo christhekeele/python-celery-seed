@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Typechecks code changes.
+# Assumes bin/dev/install has been run.
+# Keep up-to-date with .pre-commit-config.yaml.
+
+# Fail on invalid variable references
+set -u
+
+print_help() {
+  cat <<HELP
+Typechecks code changes.
+  $0 changed:  checks only changed staged files (default)
+  $0 all:      checks all files
+  $0 help:     prints this help
+HELP
+}
+
+cmd="${1:-changed}"
+
+declare -a args
+
+if [[ "$cmd" == "help" || "$cmd" == "--help" || "$cmd" == "-h" ]]; then
+  print_help
+  exit 0
+elif [[ "$cmd" == "all" ]]; then
+  args=("--all-files")
+elif [[ "$cmd" == "changed" ]]; then
+  args=()
+else
+  echo "Unrecognized typecheck subcommand <$cmd>."
+  print_help
+  exit 1
+fi
+
+# Collect results
+declare -a results
+
+# TYPECHECK: Python
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} types-mypy
+results+=($?)
+
+# Return success/failure
+for result in ${results[@]+"${results[@]}"}; do
+  if [[ result -ne 0 ]]; then
+    exit "$result"
+  fi
+done
+exit 0

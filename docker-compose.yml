@@ -1,0 +1,288 @@
+version: "3.7"
+
+####
+# Values in .env must be declared here to be passed through
+#  into your containers; however if not left empty these
+#  specific values will override.
+# We use this to set special Docker-compose-specific values, and
+#  pass through application values by leaving them blank.
+##
+x-application-env-vars: &application-env-vars
+  APP_NAME: myapp
+  APP_MODE: dev
+  # Service URLs for the docker environment we are building
+  API_HOST: "api"
+  API_PORT: "8000"
+  POSTGRESQL_URL: "postgresql://postgres@postgresql:5432/"
+  REDIS_URL: "redis://redis:6379/"
+  RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+  # Don't report in to telemetry services by default
+  TELEMETRY_ENABLED: "false"
+  # Values we actually want the local .env to pass through to containers
+  CELERY_BEAT_CHECK_FREQUENCY:
+  CELERY_RESULT_BACKEND_DATABASE:
+  CELERY_TASK_ALWAYS_EAGER:
+  LOG_LEVEL:
+  CACHE_REDIS_DATABASE:
+  TASK_SCHEDULE_SYSTEM_HEARTBEAT:
+
+####
+# These volumes should mirror what we ADD in the Dockerfile.
+# Setting them up as volumes lets local file changes
+#  propagate onto the images immediately
+#  (though running apps will need to be restarted)
+##
+x-application-volumes: &application-volumes
+  - ./app:/code/app
+  - ./bin:/code/bin
+  - ./Pipfile:/code/Pipfile
+
+x-application-healthcheck-config: &application-healthcheck-config
+  start_period: 30s
+  timeout: 10s
+  interval: 5s
+  retries: 3
+
+x-service-healthcheck-config: &service-healthcheck-config
+  start_period: 5s
+  timeout: 5s
+  interval: 5s
+  retries: 3
+
+x-browser-healthcheck-config: &browser-healthcheck-config
+  start_period: 30s
+  timeout: 10s
+  interval: 5s
+  retries: 3
+
+services:
+  ####
+  # Application entrypoints
+  ##
+
+  # Application API
+  api:
+    container_name: $APP_NAME-api-$APP_MODE
+    hostname: api
+    profiles:
+      - all
+      - essential
+      - apps
+    build: .
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: pipenv run api
+    ports:
+      - "$DOCKER_COMPOSE_API_HOST_PORT:$API_PORT"
+    healthcheck:
+      test: ["CMD", "pipenv", "run", "api", "call", "/healthcheck"]
+      <<: *application-healthcheck-config
+    environment:
+      <<: *application-env-vars
+    volumes: *application-volumes
+
+  # Background job scheduler
+  scheduler:
+    container_name: $APP_NAME-scheduler-$APP_MODE
+    hostname: scheduler
+    profiles:
+      - all
+      - essential
+      - apps
+    build: .
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: pipenv run scheduler --pidfile=
+    # healthcheck:
+    #   test: ["CMD", "pipenv", "run", "test", "tasks"]
+    #   <<: *application-healthcheck-config
+    environment:
+      <<: *application-env-vars
+    volumes: *application-volumes
+
+  # Background job runner
+  worker:
+    container_name: $APP_NAME-worker-$APP_MODE
+    hostname: worker
+    profiles:
+      - all
+      - essential
+      - apps
+    build: .
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    command: pipenv run worker
+    healthcheck:
+      test: ["CMD", "pipenv", "run", "test", "tasks"]
+      <<: *application-healthcheck-config
+    environment:
+      <<: *application-env-vars
+    volumes: *application-volumes
+
+  ####
+  # External services
+  ##
+
+  # Relational database
+  postgresql:
+    container_name: $APP_NAME-postgresql-$APP_MODE
+    hostname: postgresql
+    profiles:
+      - all
+      - auxiliary
+      - essential
+      - services
+    image: postgres:13.3-alpine
+    restart: always
+    ports:
+      - ${DOCKER_COMPOSE_POSTGRESQL_HOST_PORT}:5432
+    command: postgres -c log_statement=${POSTGRESQL_LOG_STATEMENT} -c log_min_messages=${POSTGRESQL_LOG_LEVEL}
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: $APP_NAME-$APP_MODE
+    healthcheck:
+      test: ["CMD", "pg_isready", "-Upostgres"]
+      <<: *service-healthcheck-config
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data/
+
+  # In-memory database
+  redis:
+    container_name: $APP_NAME-redis-$APP_MODE
+    hostname: redis
+    profiles:
+      - all
+      - auxiliary
+      - essential
+      - services
+    image: redis:6.2.6-alpine
+    restart: always
+    ports:
+      - ${DOCKER_COMPOSE_REDIS_HOST_PORT}:6379
+    command: redis-server --logfile stdout --loglevel $REDIS_LOG_LEVEL
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *service-healthcheck-config
+    volumes:
+      - redis_data:/data
+
+  # Task backend + browser
+  rabbitmq:
+    container_name: $APP_NAME-rabbitmq-$APP_MODE
+    hostname: rabbitmq
+    image: rabbitmq:3.8.22-management-alpine
+    profiles:
+      - all
+      - auxiliary
+      - essential
+      - services
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - ${DOCKER_COMPOSE_RABBITMQ_HOST_PORT}:5672
+      - ${DOCKER_COMPOSE_RABBITMQ_MANAGEMENT_HOST_PORT}:15672
+    environment:
+      - >
+        RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit
+        log [{console,{enabled,true},{level,${RABBITMQ_LOG_LEVEL}}}]
+        log_levels [{default,${RABBITMQ_LOG_LEVEL}},{connection,critical},{channel,warning},{queue,warning},{mirroring,critical},{federation,critical},{upgrade,critical}]
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      <<: *service-healthcheck-config
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/mnesia/
+
+  # Service browsers
+
+  # Relational database browser
+  pgadmin:
+    container_name: $APP_NAME-pgadmin-$APP_MODE
+    hostname: pgadmin
+    profiles:
+      - all
+      - auxiliary
+      - optional
+      - browsers
+    image: dpage/pgadmin4
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: always
+    ports:
+      - ${DOCKER_COMPOSE_PGADMIN_HOST_PORT}:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pgadmin@example.com
+      PGADMIN_DEFAULT_PASSWORD: pgadmin
+    healthcheck:
+      test: ["CMD", "ping", "localhost:80"]
+      <<: *browser-healthcheck-config
+
+  # In-memory database browser
+  redis-commander:
+    container_name: $APP_NAME-redis-commander-$APP_MODE
+    hostname: redis-commander
+    profiles:
+      - all
+      - auxiliary
+      - optional
+      - browsers
+    image: rediscommander/redis-commander
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - ${DOCKER_COMPOSE_REDIS_COMMANDER_HOST_PORT}:8081
+    environment:
+      REDIS_HOST: localhost
+      REDIS_PORT: ${DOCKER_COMPOSE_REDIS_HOST_PORT}
+      REDIS_DB: ${CACHE_REDIS_DATABASE}
+    healthcheck:
+      test: ["CMD", "ping", "localhost:8081"]
+      <<: *browser-healthcheck-config
+
+  # Task runner browser
+  flower:
+    container_name: $APP_NAME-flower-$APP_MODE
+    hostname: flower
+    profiles:
+      - all
+      - auxiliary
+      - optional
+      - browsers
+    image: mher/flower:0.9.7
+    restart: always
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - ${DOCKER_COMPOSE_FLOWER_HOST_PORT}:8888
+    environment:
+      FLOWER_PORT: 8888
+      CELERY_BROKER_URL: ${RABBITMQ_URL}
+    healthcheck:
+      test: ["CMD", "ping", "localhost:8888"]
+      <<: *browser-healthcheck-config
+
+volumes:
+  postgresql_data:
+  rabbitmq_data:
+  redis_data:

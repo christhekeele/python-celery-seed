@@ -1,12 +1,28 @@
 default_language_version:
-  python: python3.7
+  python: python3.9
+
+fail_fast: false
+
+files: ^app/
 
 repos:
   ####
+  # HOOKS
+  ##
+  - repo: meta
+    hooks:
+      - id: identity
+        name: "Hooks: files affected by hooks"
+      - id: check-hooks-apply
+        name: "Hooks: ensuring all hooks apply"
+      - id: check-useless-excludes
+        name: "Hooks: ensuring all excludes apply"
+
+  ####
   # Maintain command order parity with:
-  #  bin/src/format
-  #  bin/src/lint
-  #  bin/src/typecheck
+  #  bin/checks/format
+  #  bin/checks/lint
+  #  bin/checks/types
   # respectively.
   #
   # Running auto-formatting pre-commit hooks
@@ -15,7 +31,7 @@ repos:
   #  separately.
   #
   # For instance, the CI build in .circleci/config.yml
-  #  will run just bin/src/lint as a sanity check,
+  #  will run just bin/checks/lint as a sanity check,
   #  without running auto-formatters first:
   #  since we expect auto-formatting pre-commits
   #  to prevent linting from failing, but want
@@ -25,87 +41,206 @@ repos:
   ##
 
   ####
-  # BIN/SRC/FORMAT
+  # BIN/CHECKS/FORMAT
   ##
 
-  # Format whitespace:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.4.0
-    hooks:
-      - id: end-of-file-fixer                 # Makes sure files end in a newline and only a newline.
-      - id: trailing-whitespace               # Trims trailing whitespace.
-        args:
-          - --markdown-linebreak-ext=md       # Preserve Markdown hard linebreaks (https://github.github.com/gfm/#hard-line-break)
-      - id: mixed-line-ending                 # Replaces or checks mixed line ending.
+  # FORMAT: whitespace
 
-  # Format JSON:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.4.0
     hooks:
-      # Checks that all your JSON files have keys sorted and properly indented.
-      - id: pretty-format-json
+      - id: end-of-file-fixer
+        alias: format-end-of-file-fixer
+        name: "Formatting: files to end with single newlines"
+        exclude: Pipfile.lock
+      - id: trailing-whitespace
+        alias: format-trailing-whitespace
+        name: "Formatting: trailing whitespace"
+        exclude: Pipfile.lock
         args:
-          - --autofix  # Turns linter into formatter with --autofix.
+          - --markdown-linebreak-ext=md # Preserve Markdown hard linebreaks(https://github.github.com/gfm/#hard-line-break)
+      - id: mixed-line-ending
+        alias: format-mixed-line-ending
+        name: "Formatting: line endings"
+        exclude: Pipfile.lock
+        args:
+          - --fix=lf # Use as
+
+  # FORMAT: JSON
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.4.0
+    hooks:
+      # Checks that all your JSON files have keys sorted & properly indented.
+      - id: pretty-format-json
+        alias: format-pretty-format-json
+        name: "Formatting: JSON files"
+        exclude: Pipfile.lock
+        args:
+          - --autofix # Turns linter into auto-formatter.
           - --indent=2 # Indent with two spaces for brevity.
 
-  # Format Python docstrings
+  # FORAMT: bash scripts
+
+  - repo: https://github.com/christhekeele/jumanjihouse-pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      - id: shfmt
+        alias: format-shfmt
+        name: "Formatting: shell scripts"
+        pass_filenames: true
+        args:
+          - -w # Use as formatter.
+          - -i 2 # Indent with spaces instead of tabs.
+
+  # FORMAT: Python
+
   - repo: https://github.com/myint/docformatter
     rev: v1.3.1
     hooks:
       # Formats docstrings to follow PEP 257.
       - id: docformatter
+        alias: format-docformatter
+        name: "Formatting: python docstrings"
         args:
-          - --in-place                # Turns linter into formatter with --in-place.
-          - --wrap-summaries=105      # Wrap the summary with project convention line width of 105.
-          - --wrap-descriptions=105   # Wrap the rest with project convention line width of 105.
+          - --in-place # Turns linter into formatter with --in-place.
+          - --wrap-summaries=105 # Wrap the summary with project convention line width of 105.
+          - --wrap-descriptions=105 # Wrap the rest with project convention line width of 105.
 
-  # Format Python code:
   - repo: https://github.com/ambv/black
     rev: 19.10b0
     hooks:
       # Format everything else with prejudice.
       - id: black
+        alias: format-black
+        name: "Formatting: python code"
 
   ####
-  # BIN/SRC/LINT
+  # BIN/CHECKS/LINT
   ##
 
-  # Lint for high-level red flags
+  # LINT: red flags
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.4.0
     hooks:
-      - id: check-executables-have-shebangs   # Checks that non-binary executables have a proper shebang.
-      - id: check-merge-conflict              # Checks for files that contain merge conflict strings.
-      - id: check-symlinks                    # Checks for symlinks which do not point to anything.
+      - id: check-executables-have-shebangs
+        alias: lint-check-executables-have-shebangs
+        name: "Linting: non-binary executables"
+      - id: check-merge-conflict
+        alias: lint-check-merge-conflict
+        exclude: ".(markdown|md|rst)$" # Actual md/rst syntax
+        args:
+          - --assume-in-merge
+        name: "Linting: files with merge conflicts"
+      # - id: check-symlinks
+      #   alias: lint-check-symlinks
+      #   name: "Linting: symlinks with invalid targets"
+      - id: detect-private-key
+        alias: lint-detect-private-key
+        name: "Linting: private keys"
 
-  # Lint raw data files
+  # LINT: whitespace
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.4.0
+    hooks:
+      - id: mixed-line-ending
+        alias: lint-mixed-line-ending
+        name: "Linting: line endings"
+        args:
+          - --fix=no # Use as linter
+
+  # LINT: data files
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
-      - id: check-json  # Attempts to load all json files to verify syntax.
-      - id: check-toml  # Attempts to load all TOML files to verify syntax.
-      - id: check-xml   # Attempts to load all xml files to verify syntax.
-      - id: check-yaml  # Attempts to load all yaml files to verify syntax.
+      - id: check-json
+        alias: lint-check-json
+        exclude: Pipfile.lock
+        name: "Linting: syntax in json files"
+      - id: check-toml
+        alias: lint-check-toml
+        name: "Linting: syntax in TOML files"
+      # - id: check-xml
+      #   alias: lint-check-xml
+      #   name: "Linting: syntax in xml files"
+      - id: check-yaml
+        alias: lint-check-yaml
+        name: "Linting: syntax in yaml files"
 
-  # Lint python
+  # LINT: bash scripts
+
+  - repo: https://github.com/christhekeele/jumanjihouse-pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      # - id: script-must-have-extension
+      #   alias: lint-script-must-have-extension
+      #   name: "Linting: non-executable shell scripts"
+      - id: script-must-not-have-extension
+        alias: lint-script-must-not-have-extension
+        name: "Linting: executable shell scripts"
+      - id: shellcheck
+        alias: lint-shellcheck
+        name: "Linting: issues in shell scripts"
+      - id: shfmt
+        alias: lint-shfmt
+        name: "Linting: formatting in shell scripts"
+        pass_filenames: true
+        args:
+          - -d # Use as linter
+          - -i 2 # Indent with spaces instead of tabs.
+
+  # LINT: python
+  - repo: local
+    hooks:
+      - id: lint-pipenv
+        entry: pipenv check --quiet
+        name: "Linting: Pipfile format and deps security"
+        language: system
+        files: ^Pipfile.*?$
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
-      - id: check-ast         # Simply check whether files parse as valid python.
-      - id: debug-statements  # Check for debugger imports and py37+ breakpoint() calls in python source.
-      - id: flake8            # Run flake8 on your python files.
+      - id: check-ast
+        alias: lint-check-ast
+        name: "Linting: invalid syntax in python files"
+      - id: debug-statements
+        alias: lint-debug-statements
+        name: "Linting: python breakpoints"
+      - id: flake8
+        alias: lint-flake8
+        name: "Linting: python style via flake8"
+
+  - repo: https://github.com/ambv/black
+    rev: 21.9b0
+    hooks:
+      # Format everything else with prejudice.
+      - id: black
+        alias: lint-black
+        name: "Linting: python formatting via black"
+        args:
+          - --check
 
   ####
-  # BIN/SRC/TYPECHECK
+  # BIN/CHECKS/TYPES
   ##
 
+  # TYPES: python
+
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: d6e31ae # pre-commit/mirrors-mypy v0.782
+    rev: v0.812
     hooks:
       - id: mypy
-        name: Typecheck source files
+        alias: types-mypy
+        name: "Typechecking: python types"
+        pass_filenames: true
+        types: [python]
         additional_dependencies:
-          - 'sqlalchemy-stubs'
-
+          - pydantic==1.8.1
+          - sqlalchemy-stubs==0.3
         args:
-          - --warn-unused-configs # Takes effect when above is removed
+          - --ignore-missing-imports
+          - --show-error-codes

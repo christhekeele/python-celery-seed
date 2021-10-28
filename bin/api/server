@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Runs api application.
+# Assumes bin/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+api_entrypoint="app/api/server.py"
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+python "$api_entrypoint"

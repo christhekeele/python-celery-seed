@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Lints code changes.
+# Assumes bin/dev/install has been run.
+# Keep up-to-date with .pre-commit-config.yaml.
+
+# Fail on invalid variable references
+set -u
+
+print_help() {
+  cat <<HELP
+Lints source files.
+  $0 changed:  formats only changed staged files (default)
+  $0 all:      formats all files
+  $0 help:     prints this help
+HELP
+}
+
+cmd="${1:-changed}"
+
+declare -a args
+
+if [[ "$cmd" == "help" || "$cmd" == "--help" || "$cmd" == "-h" ]]; then
+  print_help
+  exit 0
+elif [[ "$cmd" == "all" ]]; then
+  args=("--all-files")
+elif [[ "$cmd" == "changed" ]]; then
+  args=()
+else
+  echo "Unrecognized linter subcommand <$cmd>."
+  print_help
+  exit 1
+fi
+
+# Collect results
+declare -a results
+
+# LINT: red flags
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-executables-have-shebangs
+
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-merge-conflict
+results+=($?)
+# pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-symlinks
+# results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-detect-private-key
+results+=($?)
+
+# LINT: data files
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-mixed-line-ending
+results+=($?)
+
+# LINT: data files
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-json
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-toml
+results+=($?)
+# pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-xml
+# results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-yaml
+results+=($?)
+
+# LINT: bash scripts
+# pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-script-must-have-extension
+# results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-script-must-not-have-extension
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-shellcheck
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-shfmt
+results+=($?)
+
+# LINT: Python
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-pipenv
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-check-ast
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-debug-statements
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-flake8
+results+=($?)
+pre-commit run "${@:2}" ${args[@]+"${args[@]}"} lint-black
+results+=($?)
+
+# Return success/failure
+for result in ${results[@]+"${results[@]}"}; do
+  if [[ result -ne 0 ]]; then
+    exit "$result"
+  fi
+done
+exit 0

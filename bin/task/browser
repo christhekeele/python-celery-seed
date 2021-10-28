@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Runs celery flower browser.
+# Assumes bin/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+celery_app="background.worker.registry"
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+celery \
+  -A "$celery_app" \
+  --loglevel="$LOG_LEVEL" \
+  flower

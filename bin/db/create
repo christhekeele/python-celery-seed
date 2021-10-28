@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Creates the postgres database.
+# Assumes bin/setup has been run.
+
+# Fail on invalid variable references
+set -u
+
+db="$APP_NAME-$APP_MODE"
+uri="$POSTGRESQL_URL$db"
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+pipenv run psql "$uri" -c "CREATE DATABASE $db;"

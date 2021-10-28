@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Starts docker development environment.
+# Assumes docker is running.
+# Assumes docker-compose is installed.
+
+# Fail on invalid variable references
+set -u
+
+print_help() {
+  cat <<HELP
+Starts docker development environment.
+Usage: $0 <profile>
+  $0 all:         starts all docker-compose containers
+  $0 essential:   starts all containers necessary to run apps, including the apps
+  $0 auxillary:   starts all containers necessary to run apps, allowing you to run apps locally
+  $0 <other>:     see other profiles in the .docker-compose.yml file
+  $0 help:        prints this help (default)
+HELP
+}
+
+cmd="${1:-help}"
+
+if [[ "$cmd" == "help" || "$cmd" == "--help" || "$cmd" == "-h" ]]; then
+  print_help
+  exit 0
+else
+  profile="${1}"
+fi
+
+args=("${@:2}")
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+docker-compose \
+  --project-name "$APP_NAME" \
+  --profile "$profile" \
+  up \
+  --build \
+  --quiet-pull \
+  --detach \
+  "${args[@]}"

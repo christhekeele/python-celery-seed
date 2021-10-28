@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Formats code changes.
+# Assumes bin/dev/install has been run.
+# Keep up-to-date with .pre-commit-config.yaml.
+
+# Fail on invalid variable references
+set -u
+
+print_help() {
+  cat <<HELP
+Formats source files.
+  $0 changed:  formats only changed staged files (default)
+  $0 all:      formats all files
+  $0 help:     prints this help
+HELP
+}
+
+cmd="${1:-changed}"
+
+declare -a args
+
+if [[ "$cmd" == "help" || "$cmd" == "--help" || "$cmd" == "-h" ]]; then
+  print_help
+  exit 0
+elif [[ "$cmd" == "all" ]]; then
+  args=("--all-files")
+elif [[ "$cmd" == "changed" ]]; then
+  args=()
+else
+  echo "Unrecognized formatter subcommand <$cmd>."
+  print_help
+  exit 1
+fi
+
+# Collect results
+declare -a results
+
+# FORMAT: whitespace
+pre-commit run ${args[@]+"${args[@]}"} format-end-of-file-fixer
+results+=($?)
+pre-commit run ${args[@]+"${args[@]}"} format-trailing-whitespace
+results+=($?)
+pre-commit run ${args[@]+"${args[@]}"} format-mixed-line-ending
+results+=($?)
+
+# FORMAT: JSON
+pre-commit run ${args[@]+"${args[@]}"} format-pretty-format-json
+results+=($?)
+
+# FORMAT: shell scripts
+pre-commit run ${args[@]+"${args[@]}"} format-shfmt
+results+=($?)
+
+# FORMAT: Python
+pre-commit run ${args[@]+"${args[@]}"} format-docformatter
+results+=($?)
+pre-commit run ${args[@]+"${args[@]}"} format-black
+results+=($?)
+
+# Return success/failure
+for result in ${results[@]+"${results[@]}"}; do
+  if [[ result -ne 0 ]]; then
+    exit "$result"
+  fi
+done
+exit 0

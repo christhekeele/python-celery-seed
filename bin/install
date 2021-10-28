@@ -2,10 +2,16 @@
 # Installs dependencies.
 # Assumes tools listed in .tool-versions are installed
 # (always true if building with docker)
+# Assumes bin/setup has been run.
+
+# Fail on invalid variable references
+set -u
+
+# Ensure failures propegate
+set -e
 
 # Echo commands
 set -x
 
 # Install python dependencies
-pip install --no-cache-dir pipenv
-pipenv sync
+pipenv sync "$@"

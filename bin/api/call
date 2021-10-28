@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Calls api endpoints.
+# Assumes bin/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+api_url=${API_URL:-http://localhost:8000}
+
+curl "${@:2}" "$api_url/$1"

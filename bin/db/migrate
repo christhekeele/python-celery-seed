@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Execute migrations.
-# Assumes bin/setup has been run.
+# Assumes bin/install has been run.
 
-db_config = "app/db/alembic.ini"
+# Fail on invalid variable references
+set -u
+
+db_config="db/alembic.ini"
+
+# Ensure failures propegate
+set -e
 
 # Echo commands
 set -x
 
-alembic -c $db_config $*
+alembic -c "$db_config" "$@"

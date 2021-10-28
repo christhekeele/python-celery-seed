@@ -2,11 +2,18 @@
 # Runs celery workers.
 # Assumes bin/install has been run.
 
-celery_app="app.task.registry"
+# Fail on invalid variable references
+set -u
+
+celery_app="background.worker.registry"
+
+# Ensure failures propegate
+set -e
 
 # Echo commands
 set -x
 
-newrelic-admin run-program celery worker \
-    -A $celery_app \
-    $*
+celery worker \
+  -A "$celery_app" \
+  --loglevel="$LOG_LEVEL" \
+  -E "$@"

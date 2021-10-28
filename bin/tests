@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Runs test suites.
+# Assumes bin/dev/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+print_help() {
+  cat <<HELP
+Runs test suites.
+  $0 unit:   runs unit test suite (default)
+  $0 tasks:  tests that background tasks are working
+  $0 help:   prints this help
+HELP
+}
+
+suite="${1:-unit}"
+
+if [[ "$suite" == "help" || "$suite" == "--help" || "$suite" == "-h" ]]; then
+  print_help
+  exit 0
+elif [[ "$suite" == "unit" ]]; then
+  set -x # Echo commands
+  pipenv run pytest tests/unit
+elif [[ "$suite" == "integration" ]]; then
+  set -x # Echo commands
+  pipenv run pytest tests/integration
+elif [[ "$suite" == "api-healthcheck" ]]; then
+  set -x # Echo commands
+  pipenv run api_call healthcheck -IHEAD
+elif [[ "$suite" == "background-healthcheck" ]]; then
+  set -x # Echo commands
+  pipenv run task remote background.tasks.system.healthcheck
+else
+  echo "Unrecognized test suite <$suite>."
+  print_help
+  exit 1
+fi

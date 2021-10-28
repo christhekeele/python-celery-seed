@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Fail on invalid variable references
+set -u
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x

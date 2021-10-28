@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Measures code coverage when running provided command.
+# Assumes tools listed in .tool-versions are installed
+# (always true if building with docker)
+# Assumes bin/dev/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+context="${1:-none}"
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+coverage run --context="$context" "${@:2}"

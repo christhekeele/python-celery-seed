@@ -2,15 +2,21 @@
 # Runs celery cron scheduler.
 # Assumes bin/install has been run.
 
-celery_app="app.task.registry"
+# Fail on invalid variable references
+set -u
+
+celery_app="background.worker.registry"
 celerybeat_schedule="./tmp/celerybeat-schedule"
 celerybeat_pidfile="./tmp/celerybeat.pid"
+
+# Ensure failures propegate
+set -e
 
 # Echo commands
 set -x
 
-newrelic-admin run-program celery beat \
-    -A $celery_app \
-    -s $celerybeat_schedule \
-    --pidfile $celerybeat_pidfile \
-    $*
+celery beat \
+  -A "$celery_app" \
+  -s "$celerybeat_schedule" \
+  --loglevel="$LOG_LEVEL" \
+  --pidfile="$celerybeat_pidfile" "$@"

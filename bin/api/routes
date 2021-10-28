@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Describes API routes.
+# Assumes bin/dev/install has been run.
+
+# Fail on invalid variable references
+set -u
+
+script="scripts/api/list_routes.py"
+
+# Ensure failures propegate
+set -e
+
+# Echo commands
+set -x
+
+python "$script" "${1:-/}"
